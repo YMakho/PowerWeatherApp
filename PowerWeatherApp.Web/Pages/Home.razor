@@ -1,0 +1,200 @@
+﻿@page "/"
+@using PowerWeatherApp.Web.Models
+@using PowerWeatherApp.Web.Services
+@inject IWeatherApiClient WeatherApi
+@inject NavigationManager NavManager
+
+<div class="container mt-4">
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger text-center shadow-sm p-4" role="alert">
+            <h4 class="alert-heading">Ошибка</h4>
+            <p>@errorMessage</p>
+            <hr>
+            <button class="btn btn-danger" @onclick="LoadDataAsync">
+                <i class="bi bi-arrow-clockwise"></i> Повторить запрос
+            </button>
+        </div>
+    }
+    else if (forecast != null)
+    {
+        <!-- Заголовок и статус -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-4 text-primary mb-0">
+                @forecast.Location?.City
+            </h1>
+            <span class="badge bg-info fs-6 p-2 shadow-sm">
+                @(forecast.IsFromCache ? "Данные из кэша" : " Online")
+            </span>
+        </div>
+
+        <!-- Карточка текущей погоды -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card main-weather-card shadow-lg border-0">
+                    <div class="card-body p-4">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <img src="@forecast.Current?.IconUrl" class="weather-icon-big" alt="weather" />
+                            </div>
+                            <div class="col">
+                                <h1 class="display-1 fw-bold mb-0">@forecast.Current?.Temp<span class="h2">°C</span></h1>
+                                <h3 class="text-muted">@forecast.Current?.Condition</h3>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <ul class="list-unstyled mb-0 fs-5">
+                                    <li class="mb-2"><span class="text-secondary">Ощущается:</span> <b>@forecast.Current?.FeelsLike °C</b></li>
+                                    <li class="mb-2"><span class="text-secondary">Ветер:</span> <b>@forecast.Current?.WindSpeed км/ч</b></li>
+                                    <li><span class="text-secondary">Влажность:</span> <b>@forecast.Current?.Humidity %</b></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Почасовой прогноз -->
+        <h4 class="mb-3">Почасовой прогноз</h4>
+        <div class="hourly-scroll mb-5">
+            <div class="d-flex flex-nowrap">
+                @foreach (var hour in forecast.Hourly)
+                {
+                    <div class="card text-center me-2 hourly-card shadow-sm">
+                        <div class="card-body p-2">
+                            <div class="fw-bold text-muted small">@hour.Time</div>
+                            <img src="@hour.IconUrl" width="40" height="40" />
+                            <div class="fw-bold">@hour.Temp °C</div>
+                            <div class="text-primary small">@hour.RainChance%</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Прогноз на 3 дня -->
+        <h4 class="mb-3">Прогноз на 3 дня</h4>
+        <div class="row">
+            @foreach (var day in forecast.Daily)
+            {
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 shadow-sm daily-card">
+                        <div class="card-body text-center p-3">
+                            <h5 class="card-title">@day.Date</h5>
+                            <img src="@day.IconUrl" width="64" height="64" class="my-2" />
+                            <div class="d-flex justify-content-center align-items-center gap-2">
+                                <span class="text-danger fw-bold fs-5">@day.MaxTemp°</span>
+                                <span class="text-muted">/</span>
+                                <span class="text-primary fw-bold fs-5">@day.MinTemp°</span>
+                            </div>
+                            <p class="card-text text-muted mt-2 small">@day.Condition</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    /* Кастомные стили */
+    .main-weather-card {
+        background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+        border-radius: 20px;
+    }
+
+    .weather-icon-big {
+        width: 120px;
+        height: 120px;
+        filter: drop-shadow(0 10px 10px rgba(0,0,0,0.1));
+    }
+
+    .hourly-scroll {
+        overflow-x: auto;
+        padding-bottom: 10px;
+    }
+
+        /* Скрыть скроллбар для чистоты дизайна */
+        .hourly-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .hourly-scroll::-webkit-scrollbar-thumb {
+            background-color: #ced4da;
+            border-radius: 3px;
+        }
+
+    .hourly-card {
+        min-width: 90px;
+        background-color: #fff;
+        border-radius: 15px;
+        border: 1px solid #eee;
+        transition: transform 0.2s;
+    }
+
+        .hourly-card:hover {
+            transform: translateY(-5px);
+            border-color: #0d6efd;
+        }
+
+    .daily-card {
+        border: none;
+        background-color: #fff;
+        border-radius: 15px;
+        transition: box-shadow 0.3s;
+    }
+
+        .daily-card:hover {
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+        }
+</style>
+
+@code {
+    private WeatherResponseDto forecast;
+    private bool isLoading = false;
+    private string errorMessage;
+
+    // Москва
+    private const double MoscowLat = 55.7558;
+    private const double MoscowLon = 37.6173;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Запрашиваем прогноз
+            forecast = await WeatherApi.GetForecast(MoscowLat, MoscowLon, 3);
+
+            if (forecast == null)
+            {
+                errorMessage = "Сервер вернул пустой ответ.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Не удалось соединиться с API. Убедитесь, что бэкенд запущен. Ошибка: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Новый профиль",
+    "Projects": [
+      {
+        "Path": "PowerWeatherApp.Api\\PowerWeatherApp.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "PowerWeatherApp.Web\\PowerWeatherApp.Web.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
