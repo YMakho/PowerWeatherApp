@@ -60,7 +60,7 @@ namespace PowerWeatherApp.Infrastructure.Mappings
                 })
                 .ToList(),
                 Hourly = hourlyDto,
-                IsFromCache = (DateTime.UtcNow - domain.CachedAt).TotalMinutes > 1,
+                IsFromCache = true,//(DateTime.UtcNow - domain.CachedAt).TotalMinutes > 1,
                 LastUpdated = domain.CachedAt
             };
         }
